@@ -1,75 +1,32 @@
 <script>
-	export let data;
+	import { invalidate, invalidateAll } from '$app/navigation';
+	import { enhance } from '$app/forms';
 	import { formatDate } from '$lib/dateUtils.js';
 	import Chat from './member/chat/Chat.svelte';
 
-	let likeUserIds = data?.likes?.map((like) => like.user);
-	let isLiked = likeUserIds.includes(data?.user?.userId);
+	import { fade } from 'svelte/transition';
+	import { spin } from '$lib/transitions/spin';
 
-	function toggleLike() {
-		isLiked = !isLiked;
+	export let data;
+	export let form;
+
+	let userInProject = data?.project?.users.map((user) => user.userId).includes(data?.user?.userId);
+
+	let isLiked = data?.likes?.map((like) => like.user).includes(data?.user?.userId);
+	let joinRequestSent = data?.project?.joinRequests
+		?.map((joinRequest) => joinRequest.userId)
+		.includes(data?.user?.userId);
+
+	$: if (form?.liked) {
+		isLiked = true;
+	} else if (form?.unliked) {
+		isLiked = false;
 	}
 
-	function handleToggleLike(event) {
-		if (isLiked) {
-			handleUnlike(event);
-		} else {
-			handleLike(event);
-		}
-	}
-	async function handleUnlike(event) {
-		if (!data?.user) {
-			return;
-		}
-	}
-	async function handleLike(event) {
-		if (!data?.user) {
-			return;
-		}
-		if (!data?.jwtToken) {
-			console.log('No jwtToken');
-			return;
-		}
+	let showSentIcon = joinRequestSent;
 
-		try {
-			const response = await fetch(
-				`http://localhost:3000/projects/${data?.project?.projectId}/likes`,
-				{
-					method: 'POST',
-
-					body: JSON.stringify({ projectId: data?.project?.projectId }),
-
-					headers: {
-						'Content-Type': 'application/json',
-						Authorization: `Bearer ${data?.jwtToken}`
-					}
-				}
-			);
-			const result = await response.json();
-			if (response.ok) {
-				isLiked = !isLiked;
-			} else {
-				console.error(result);
-			}
-		} catch (error) {
-			console.error('Error liking the post:', error);
-		}
-
-		// fetch('/project/[projectId]', {
-		// 	method: 'POST',
-		// 	body: { userId: data?.user?.userId, projectId: data?.project?.projectId }
-		// })
-		// 	.then((response) => response.json())
-		// 	.then((result) => {
-		// 		if (result.success) {
-		// 			isLiked = !isLiked;
-		// 		} else {
-		// 			console.error(result.message);
-		// 		}
-		// 	})
-		// 	.catch((error) => {
-		// 		console.error('Error liking the post:', error);
-		// 	});
+	$: if (form?.joinRequestSent) {
+		joinRequestSent = true;
 	}
 </script>
 
@@ -83,24 +40,51 @@
 			<div class="mb-2 flex flex-row items-center space-x-4">
 				<h1 class="pb-1 text-3xl font-bold">{data?.project.title}</h1>
 				<p class=" text-gray-600 text-sm">{formatDate(data?.project.createdAt)}</p>
-				<form on:submit|preventDefault={handleToggleLike}>
+				<form use:enhance method="POST" action={isLiked ? '?/unlike' : '?/like'}>
 					<button type="submit" class="focus:outline-none">
 						<i class="{isLiked ? 'fa-solid text-red-500' : 'fa-regular'} fa-heart"></i>
 					</button>
 				</form>
 			</div>
-			<p class="text-gray-600 mt-2">{data?.project.description}</p>
+			<p class="text-gray-600 my-2">{data?.project.description}</p>
+			{#if !userInProject}
+				<form use:enhance method="POST" action="?/joinRequest">
+					<button
+						type="submit"
+						disabled={joinRequestSent}
+						class="flex flex-row items-center space-x-2 focus:outline-none text-gray-500 hover:text-green-500"
+					>
+						{#if joinRequestSent && showSentIcon}
+							<i class="fa-regular fa-envelope text-green-500" in:spin={{ direction: -1 }}></i>
+						{:else if !joinRequestSent}
+							<i
+								class="fa-regular fa-paper-plane"
+								out:spin={{ direction: 1 }}
+								on:outroend={() => {
+									showSentIcon = true;
+								}}
+							></i>
+						{/if}
+
+						{#if joinRequestSent}
+							<span class=" font-semibold text-sm text-green-500">Join Request Sent</span>
+						{:else}
+							<span class=" font-semibold text-sm">Send Join Request</span>
+						{/if}
+					</button>
+				</form>
+			{/if}
 		</div>
-		<div class="mb-8">
-			{#if data?.project.users.map((user) => user.userId).includes(data?.user?.userId)}
+		{#if userInProject}
+			<div class="mb-8">
 				<a
 					href="/project/{data?.project.projectId}/member/dashboard"
 					class=" py-2 text-blue-500 mb-20 rounded-md focus:outline-none focus:ring focus:ring-blue-300"
 					>Dashboard
-					<i class="fa-solid fa-share-from-square ml-2"></i>
+					<i class="fa-solid fa-arrow-up-right-from-square ml-2"></i>
 				</a>
-			{/if}
-		</div>
+			</div>
+		{/if}
 
 		<div class="flex items-center space-x-4 mb-6">
 			<div>

@@ -1,7 +1,8 @@
 <script>
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { slide, fade } from 'svelte/transition';
+	import { slide, fade, fly } from 'svelte/transition';
+	import { spin } from '$lib/transitions/spin';
 	import SidebarItem from './SidebarItem.svelte';
 
 	import { cubicIn, cubicOut, cubicInOut } from 'svelte/easing';
@@ -30,18 +31,6 @@
 			collapsed = forcefullyCollapsed;
 			//		collapsed = false;
 		}
-	}
-
-	function spin(node, { delay = 0, duration = 200, direction = 1 }) {
-		return {
-			delay,
-			duration,
-			css: (t) => {
-				//console.log('t', t);
-				let eased = cubicIn(1 - t);
-				return `transform: rotate(${direction * eased * 180}deg)`;
-			}
-		};
 	}
 
 	onMount(() => {
